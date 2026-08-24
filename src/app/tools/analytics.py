@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from ..observability import observe_tool
 from ..services import listings as listing_svc
 from ..services import locations as loc_svc
 from ..services import osm as osm_svc
@@ -12,6 +13,7 @@ from ..services import osm as osm_svc
 
 def register(mcp: FastMCP) -> None:
     @mcp.tool
+    @observe_tool
     def project_overview(project_id: str) -> dict:
         """Market overview for one project (US4): counts + price/area stats + property-type mix.
 
@@ -31,6 +33,7 @@ def register(mcp: FastMCP) -> None:
         return {"project": project, "stats": listing_svc.project_price_stats(project_id)}
 
     @mcp.tool
+    @observe_tool
     def map_listings(
         project_id: str | None = None,
         property_type: str | None = None,

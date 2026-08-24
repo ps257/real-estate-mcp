@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from ..observability import observe_tool
 from ..services import listings as svc
 from ..services import locations as loc_svc
 from ..shaping import compute_comparison_insights
@@ -38,6 +39,7 @@ def _check_ranges(bounds: tuple[tuple[str, float | None, float | None], ...]) ->
 
 def register(mcp: FastMCP) -> None:
     @mcp.tool
+    @observe_tool
     def search_listings(
         project_id: str | None = None,
         building_id: str | None = None,
@@ -121,6 +123,7 @@ def register(mcp: FastMCP) -> None:
         )
 
     @mcp.tool
+    @observe_tool
     def search_listings_by_province(
         province: str,
         property_type: str | None = None,
@@ -194,6 +197,7 @@ def register(mcp: FastMCP) -> None:
         )
 
     @mcp.tool
+    @observe_tool
     def get_listing(listing_id: str) -> dict:
         """Get the full detail of one listing — the detail page in US1.
 
@@ -236,6 +240,7 @@ def register(mcp: FastMCP) -> None:
         return row
 
     @mcp.tool
+    @observe_tool
     def list_project_listings(project_id: str, limit: int = 50, offset: int = 0) -> dict:
         """Page through every listing in a project — the "xem tất cả" view.
 
@@ -265,6 +270,7 @@ def register(mcp: FastMCP) -> None:
         return svc.list_by_project(project_id=project_id, limit=limit, offset=offset)
 
     @mcp.tool
+    @observe_tool
     def compare_listings(listing_ids: list[str]) -> dict:
         """Compare 2-4 listings side by side with calculated insights (US6).
 
@@ -311,4 +317,3 @@ def register(mcp: FastMCP) -> None:
             "deltas": insights["deltas"],
             "highlights": insights["highlights"],
         }
-

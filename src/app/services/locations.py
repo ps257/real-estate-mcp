@@ -13,6 +13,7 @@ from __future__ import annotations
 import unicodedata
 
 from ..db import get_client
+from ..observability import observe_operation
 from ..shaping import shape_location
 
 # Only the columns shape_location actually keeps. `select("*")` would also pull the three jsonb
@@ -49,6 +50,7 @@ def is_same_name(a: str, b: str) -> bool:
     return " ".join(_fold_accents(a).split()) == " ".join(_fold_accents(b).split())
 
 
+@observe_operation("db.projects.search", as_type="retriever")
 def search_projects(query: str | None, province: str | None, limit: int) -> list[dict]:
     """Search project nodes by name and/or province, best match first.
 
@@ -82,6 +84,7 @@ def search_projects(query: str | None, province: str | None, limit: int) -> list
     return [shape_location(r) for r in rows]
 
 
+@observe_operation("db.locations.get", as_type="retriever")
 def get_location(location_id: str) -> dict | None:
     rows = (
         get_client()
@@ -95,6 +98,7 @@ def get_location(location_id: str) -> dict | None:
     return shape_location(rows[0]) if rows else None
 
 
+@observe_operation("db.locations.list-project-nodes", as_type="retriever")
 def list_project_nodes(project_id: str, level: str | None, limit: int) -> list[dict]:
     """List every cluster/building under a project, clusters first then buildings, by name.
 
@@ -115,6 +119,7 @@ def list_project_nodes(project_id: str, level: str | None, limit: int) -> list[d
     return [shape_location(r) for r in rows]
 
 
+@observe_operation("db.projects.by-province", as_type="retriever")
 def project_ids_in_province(province: str) -> list[str]:
     """Project ids sitting in a province — step one of a province-wide listing search.
 
@@ -142,6 +147,7 @@ def project_ids_in_province(province: str) -> list[str]:
     return [r["id"] for r in rows]
 
 
+@observe_operation("db.provinces.list", as_type="retriever")
 def list_provinces() -> list[str]:
     """Distinct provinces holding at least one project, in Vietnamese alphabetical order.
 

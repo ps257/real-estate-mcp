@@ -42,3 +42,32 @@ def host() -> str:
 
 def port() -> int:
     return int(os.environ.get("MCP_PORT", "8000"))
+
+
+def langfuse_enabled() -> bool:
+    """Whether this process should initialize Langfuse tracing.
+
+    Credentials still gate initialization, so a missing `.env` can never stop the MCP server.
+    """
+    return os.environ.get("LANGFUSE_ENABLED", "true").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def langfuse_public_key() -> str | None:
+    return os.environ.get("LANGFUSE_PUBLIC_KEY") or None
+
+
+def langfuse_secret_key() -> str | None:
+    return os.environ.get("LANGFUSE_SECRET_KEY") or None
+
+
+def langfuse_base_url() -> str:
+    return os.environ.get("LANGFUSE_BASE_URL", "https://cloud.langfuse.com").rstrip("/")
+
+
+def langfuse_environment() -> str:
+    return os.environ.get("LANGFUSE_TRACING_ENVIRONMENT", "development")

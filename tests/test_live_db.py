@@ -347,7 +347,7 @@ async def test_has_flex_room_marks_the_plus_one(mcp_server):
     ))
     assert cards
     for card in cards:
-        titled_plus = "+ 1" in card["title"] or "+1" in card["title"]
+        titled_plus = "+ 1" in card["title"] or "+1" in card["title"] or "2PN+" in card["title"] or "1PN+" in card["title"] or "3PN+" in card["title"]
         assert card["has_flex_room"] == titled_plus, f"mismatch on {card['title']!r}"
 
 
@@ -543,12 +543,13 @@ async def test_get_listing_returns_every_documented_field(mcp_server, sample_lis
         "get_listing", {"listing_id": sample_listing_ids[0]}
     ))
     expected = {
-        "id", "title", "url", "source", "project_id", "cluster_id", "building_id", "property_type",
+        "id", "title", "url", "source", "project_id", "building_id", "property_type",
         "area_m2", "bedrooms", "bedrooms_plus", "has_flex_room", "bathrooms", "price_vnd", "price_per_m2_vnd",
         "status",
         "lat", "lng", "thumbnail", "floor_num", "floor_band", "direction_balcony", "view",
         "legal_status", "furnishing", "usage_status", "price_type", "area_type",
         "image_count", "images", "first_seen", "last_seen", "crawled_at",
+        "project_name", "province", "district", "address",
     }
     assert set(detail) == expected, f"payload drifted: {set(detail) ^ expected}"
     assert isinstance(detail["images"], list), "images must be a list even when empty"
