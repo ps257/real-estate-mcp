@@ -5,11 +5,13 @@ from __future__ import annotations
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from ..observability import observe_tool
 from ..services import locations as svc
 
 
 def register(mcp: FastMCP) -> None:
     @mcp.tool
+    @observe_tool
     def search_projects(
         query: str | None = None,
         province: str | None = None,
@@ -39,6 +41,7 @@ def register(mcp: FastMCP) -> None:
         return svc.search_projects(query=query, province=province, limit=limit)
 
     @mcp.tool
+    @observe_tool
     def resolve_project(text: str) -> dict:
         """Decide whether a user's free text refers to a known project, for slot-filling.
 
@@ -63,6 +66,7 @@ def register(mcp: FastMCP) -> None:
         return {"matched": False, "project": None, "candidates": candidates}
 
     @mcp.tool
+    @observe_tool
     def list_project_buildings(
         project_id: str,
         level: str | None = None,
@@ -96,6 +100,7 @@ def register(mcp: FastMCP) -> None:
         return svc.list_project_nodes(project_id=project_id, level=level, limit=limit)
 
     @mcp.tool
+    @observe_tool
     def list_provinces() -> list[str]:
         """List the provinces that have at least one project, to offer the user location choices.
 
@@ -113,6 +118,7 @@ def register(mcp: FastMCP) -> None:
         return svc.list_provinces()
 
     @mcp.tool
+    @observe_tool
     def calculate_commute_matrix(
         origins: list[dict],
         destinations: list[dict],

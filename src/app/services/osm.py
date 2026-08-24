@@ -5,9 +5,12 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+from ..observability import mark_current_observation_error, observe_operation
+
 _OSRM_CACHE: dict[str, Any] = {}
 
 
+@observe_operation("osm.overpass.query", as_type="span")
 def get_nearby_amenities(lat: float, lng: float, radius: int = 2000) -> list[dict[str, Any]]:
     """Fetch nearby amenities (schools, hospitals, parks, etc.) from OSM Overpass API.
     
@@ -74,12 +77,13 @@ def get_nearby_amenities(lat: float, lng: float, radius: int = 2000) -> list[dic
         # Sort by distance loosely (just return top 50 to avoid clutter)
         return amenities[:50]
         
-    except Exception as e:  # noqa: BLE001 - Overpass is a third party; a map without amenities
+    except Exception as exc:  # noqa: BLE001 - a map without amenities beats no map at all
         # beats no map at all, so every failure degrades to an empty list.
-        print(f"OSM Overpass API Error: {e}")
+        mark_current_observation_error(exc)
         return []
 
 
+@observe_operation("osm.osrm.matrix", as_type="span")
 def calculate_osrm_matrix(
     origins: list[tuple[float, float]],
     destinations: list[tuple[float, float]],
@@ -117,7 +121,8 @@ def calculate_osrm_matrix(
             data = json.loads(response.read().decode("utf-8"))
 
         if data.get("code") != "Ok":
-            return {"status": "error", "message": data.get("message", "OSRM routing failed"), "matrix": []}
+            mark_current_observation_error(RuntimeError("OSRM returned a non-OK response"))
+            return {"status": "error", "message": "OSRM routing failed", "matrix": []}
 
         distances = data.get("distances", [])
         durations = data.get("durations", [])
@@ -159,10 +164,12 @@ def calculate_osrm_matrix(
         }
         _OSRM_CACHE[cache_key] = res
         return res
-    except Exception as e:
-        return {"status": "error", "message": str(e), "matrix": []}
+    except Exception as exc:  # noqa: BLE001 - third-party routing degrades to a safe error
+        mark_current_observation_error(exc)
+        return {"status": "error", "message": "OSRM request failed", "matrix": []}
 
 
+@observe_operation("data.amenities.commute", as_type="span")
 def fetch_nearby_amenities_with_commute(
     origin_lat: float,
     origin_lng: float,

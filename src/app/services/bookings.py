@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from ..db import get_client
+from ..observability import observe_operation
 
 BOOKINGS = "bookings"
 
@@ -26,6 +27,7 @@ DEDUPE_WINDOW = timedelta(minutes=10)
 BOOKING_COLUMNS = "id,kind,project_id,is_authenticated,contact,preferred_time,note,created_at"
 
 
+@observe_operation("db.bookings.find-duplicate", as_type="retriever")
 def find_recent_duplicate(
     kind: str,
     project_id: str,
@@ -58,6 +60,7 @@ def find_recent_duplicate(
     return rows[0] if rows else None
 
 
+@observe_operation("db.bookings.insert", as_type="span")
 def create_booking(
     kind: str,
     project_id: str,
