@@ -20,8 +20,6 @@ floor_band looked 100% NULL that way while it is really only 46% NULL.
 
 from __future__ import annotations
 
-import os
-from typing import Any
 from postgrest.exceptions import APIError
 
 from ..constants import (
@@ -33,6 +31,7 @@ from ..constants import (
     get_province_abbreviation,
 )
 from ..db import get_client
+from ..observability import mark_current_observation_error, observe_operation
 from ..shaping import (
     LISTING_CARD_COLUMNS,
     LISTING_DETAIL_COLUMNS,
@@ -49,6 +48,7 @@ from ..shaping import (
 LISTINGS = "listings_clean"
 
 
+@observe_operation("db.listings.search", as_type="retriever")
 def search_listings(
     project_id: str | None,
     project_ids: list[str] | None,
@@ -114,6 +114,7 @@ def search_listings(
     return [shape_listing_card(r) for r in rows or []]
 
 
+@observe_operation("db.listings.get", as_type="retriever")
 def get_listing(listing_id: str) -> dict | None:
     rows = (
         get_client()
@@ -127,6 +128,7 @@ def get_listing(listing_id: str) -> dict | None:
     return shape_listing_detail(rows[0]) if rows else None
 
 
+@observe_operation("db.listings.page", as_type="retriever")
 def list_by_project(project_id: str, limit: int, offset: int) -> dict:
     """One page of a project's listings, cheapest first, plus the total that page came from.
 
@@ -191,6 +193,7 @@ def _project_page(project_id: str, limit: int, offset: int):
     )
 
 
+@observe_operation("db.listings.get-ref", as_type="retriever")
 def get_listing_ref(listing_id: str) -> dict | None:
     """id + project_id only — enough to prove a listing exists and to route its CTAs.
 
@@ -209,6 +212,7 @@ def get_listing_ref(listing_id: str) -> dict | None:
     return rows[0] if rows else None
 
 
+@observe_operation("db.listings.get-many", as_type="retriever")
 def get_many(listing_ids: list[str]) -> list[dict]:
     """Fetch several listings by id (used by compare), attaching province for context evaluation."""
     rows = (
@@ -243,6 +247,7 @@ def get_many(listing_ids: list[str]) -> list[dict]:
 
 
 
+@observe_operation("db.listings.project-stats", as_type="retriever")
 def project_price_stats(project_id: str) -> dict:
     """Aggregate price/area stats for one project (computed in Python over the project's rows).
 
@@ -325,6 +330,7 @@ def project_price_stats(project_id: str) -> dict:
     }
 
 
+@observe_operation("db.listings.map-points", as_type="retriever")
 def map_points(
     project_id: str | None,
     property_type: str | None,
@@ -403,6 +409,7 @@ def _haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -
     return round(R * c, 2)
 
 
+@observe_operation("db.listings.geo-bounds", as_type="retriever")
 def get_listings_geo_bounds(listing_ids: list[str]) -> dict:
     """Extract coordinates, calculate center, bounds, recommended zoom, and distance matrix for map view."""
     if not listing_ids:
@@ -419,8 +426,8 @@ def get_listings_geo_bounds(listing_ids: list[str]) -> dict:
             .data
             or []
         )
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 - preserve the existing partial-map fallback
+        mark_current_observation_error(exc)
 
     project_ids = list({r["project_id"] for r in rows if r.get("project_id")})
     loc_map = {}
@@ -436,8 +443,8 @@ def get_listings_geo_bounds(listing_ids: list[str]) -> dict:
                 or []
             )
             loc_map = {l["id"]: l for l in loc_rows}
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - preserve the existing partial-map fallback
+            mark_current_observation_error(exc)
 
     items = []
     lats, lngs = [], []
@@ -561,6 +568,7 @@ def get_listings_geo_bounds(listing_ids: list[str]) -> dict:
     }
 
 
+@observe_operation("data.amenities.fetch", as_type="span")
 def fetch_real_nearby_amenities(lat: float, lng: float, profile: str = "driving") -> list[dict]:
     """Query nearby amenities directly from UC5's OSM service and measure road commute via OSRM."""
     from . import osm as osm_svc
@@ -570,10 +578,12 @@ def fetch_real_nearby_amenities(lat: float, lng: float, profile: str = "driving"
 
     try:
         return osm_svc.fetch_nearby_amenities_with_commute(lat, lng, profile=profile)
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 - amenities intentionally degrade to an empty list
+        mark_current_observation_error(exc)
         return []
 
 
+@observe_operation("data.amenities.compare", as_type="span")
 def compare_nearby_amenities(listing_ids: list[str], profile: str = "driving") -> dict:
     """Return objective side-by-side nearby amenity distance & duration stats querying OSM and OSRM."""
     bounds_data = get_listings_geo_bounds(listing_ids)
