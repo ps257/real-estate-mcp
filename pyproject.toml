@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "real-estate-mcp"
 version = "0.1.0"
 description = "FastMCP server exposing real-estate market-intelligence tools over MCP for agent deployment."
