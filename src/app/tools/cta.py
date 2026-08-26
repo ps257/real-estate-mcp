@@ -18,6 +18,7 @@ from datetime import datetime
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from ..observability import observe_tool
 from ..services import bookings as booking_svc
 from ..services import listings as listing_svc
 from ..services import locations as loc_svc
@@ -73,10 +74,10 @@ def _validate_payload(payload: dict, is_authenticated: bool) -> None:
 
     phone = str(payload.get("phone") or "")
     if phone and sum(c.isdigit() for c in phone) < 8:
-        raise ToolError(f"'{phone}' does not look like a phone number.")
+        raise ToolError("phone does not look like a phone number.")
     email = str(payload.get("email") or "")
     if email and ("@" not in email or "." not in email.split("@")[-1]):
-        raise ToolError(f"'{email}' does not look like an email address.")
+        raise ToolError("email does not look like an email address.")
 
 
 def _normalise_time(value: object) -> str | None:
@@ -92,7 +93,7 @@ def _normalise_time(value: object) -> str | None:
         return datetime.fromisoformat(text).isoformat()  # py3.11+ parses a trailing Z
     except ValueError:
         raise ToolError(
-            f"preferred_time '{text}' is not an ISO-8601 datetime. "
+            "preferred_time is not an ISO-8601 datetime. "
             "Expected something like '2026-08-10T14:00:00+07:00'."
         ) from None
 
@@ -119,6 +120,7 @@ def _form_payload(action: str, project_id: str, is_authenticated: bool) -> dict:
 
 def register(mcp: FastMCP) -> None:
     @mcp.tool
+    @observe_tool
     def start_visit_booking(project_id: str, is_authenticated: bool = False) -> dict:
         """Open the "đặt lịch tham quan" (site-visit) form for a project (US2.1).
 
@@ -149,6 +151,7 @@ def register(mcp: FastMCP) -> None:
         return _form_payload("visit_booking", project_id, is_authenticated)
 
     @mcp.tool
+    @observe_tool
     def start_consultation(project_id: str, is_authenticated: bool = False) -> dict:
         """Open the "tư vấn mua nhà" (buyer consultation) form for a project (US2.2).
 
@@ -175,6 +178,7 @@ def register(mcp: FastMCP) -> None:
         return _form_payload("consultation", project_id, is_authenticated)
 
     @mcp.tool
+    @observe_tool
     def submit_booking(
         kind: str,
         project_id: str,
@@ -252,6 +256,7 @@ def register(mcp: FastMCP) -> None:
         }
 
     @mcp.tool
+    @observe_tool
     def listing_cta_actions(listing_id: str) -> dict:
         """Return the four CTA buttons to show under a listing result (US1).
 

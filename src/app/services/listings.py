@@ -20,11 +20,10 @@ floor_band looked 100% NULL that way while it is really only 46% NULL.
 
 from __future__ import annotations
 
-import os
-from typing import Any
 from postgrest.exceptions import APIError
 
 from ..db import get_client
+from ..observability import mark_current_observation_error, observe_operation
 from ..shaping import (
     LISTING_CARD_COLUMNS,
     LISTING_DETAIL_COLUMNS,
@@ -41,6 +40,7 @@ from ..shaping import (
 LISTINGS = "listings_clean"
 
 
+@observe_operation("db.listings.search", as_type="retriever")
 def search_listings(
     project_id: str | None,
     project_ids: list[str] | None,
@@ -138,6 +138,7 @@ def _enrich_location_info(items: list[dict]) -> list[dict]:
     return items
 
 
+@observe_operation("db.listings.get", as_type="retriever")
 def get_listing(listing_id: str) -> dict | None:
     rows = (
         get_client()
@@ -154,6 +155,7 @@ def get_listing(listing_id: str) -> dict | None:
     return _enrich_location_info([detail])[0]
 
 
+@observe_operation("db.listings.page", as_type="retriever")
 def list_by_project(project_id: str, limit: int, offset: int) -> dict:
     """One page of a project's listings, cheapest first, plus the total that page came from.
 
@@ -219,6 +221,7 @@ def _project_page(project_id: str, limit: int, offset: int):
     )
 
 
+@observe_operation("db.listings.get-ref", as_type="retriever")
 def get_listing_ref(listing_id: str) -> dict | None:
     """id + project_id only — enough to prove a listing exists and to route its CTAs.
 
@@ -237,6 +240,7 @@ def get_listing_ref(listing_id: str) -> dict | None:
     return rows[0] if rows else None
 
 
+@observe_operation("db.listings.get-many", as_type="retriever")
 def get_many(listing_ids: list[str]) -> list[dict]:
     """Fetch several listings by id (used by compare), attaching province for context evaluation."""
     rows = (
@@ -275,6 +279,7 @@ def get_many(listing_ids: list[str]) -> list[dict]:
 
 
 
+@observe_operation("db.listings.project-stats", as_type="retriever")
 def project_price_stats(project_id: str) -> dict:
     """Aggregate price/area stats for one project (computed in Python over the project's rows).
 
@@ -357,6 +362,7 @@ def project_price_stats(project_id: str) -> dict:
     }
 
 
+@observe_operation("db.listings.map-points", as_type="retriever")
 def map_points(
     project_id: str | None,
     property_type: str | None,
@@ -418,4 +424,3 @@ def map_points(
         }
         for r in rows
     ]
-
