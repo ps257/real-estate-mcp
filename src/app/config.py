@@ -37,11 +37,11 @@ def transport() -> str:
 
 
 def host() -> str:
-    return os.environ.get("MCP_HOST", "127.0.0.1")
+    return os.environ.get("MCP_HOST", "0.0.0.0")
 
 
 def port() -> int:
-    return int(os.environ.get("MCP_PORT", "8000"))
+    return int(os.environ.get("PORT") or os.environ.get("MCP_PORT", "8000"))
 
 
 def langfuse_enabled() -> bool:
