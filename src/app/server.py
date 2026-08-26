@@ -51,10 +51,28 @@ mcp = FastMCP(
 register_all(mcp)
 
 
+@mcp.custom_route("/healthz", methods=["GET"])
+async def healthz(request: Request) -> JSONResponse:
+    """Unauthenticated liveness probe for the hosting platform.
+
+    /mcp cannot serve this purpose: it answers 401 without a token, which a
+    platform health check reads as a failing service. On a scale-to-zero plan
+    the probe is also what keeps the server awake — without it the first tool
+    call an agent makes lands on a cold start and fails rather than waits.
+    """
+    return JSONResponse({"status": "ok"})
+
+
 def main() -> None:
     """Console-script / `python -m` entrypoint. Transport is chosen via env (.env)."""
     transport = config.transport()
     if transport == "http":
+        token = config.auth_token()
+        if token:
+            # Shared-secret gate for agent -> server calls. Needed whenever the
+            # server is reachable outside a private network; the caller sends
+            # `Authorization: Bearer <token>`.
+            mcp.auth = StaticTokenVerifier(tokens={token: {"client_id": "agent"}})
         mcp.run(transport="http", host=config.host(), port=config.port())
     else:
         mcp.run()  # stdio

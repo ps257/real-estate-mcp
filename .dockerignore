@@ -1,0 +1,30 @@
+# Secrets never travel in the image — env comes from the platform / compose.
+.env
+.env.*
+!.env.example
+
+# Local virtualenvs (venv/ alone is ~151MB).
+venv/
+.venv/
+env/
+ENV/
+
+# Python + tooling caches.
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+
+# Not needed at runtime.
+.git/
+.gitignore
+tests/
+docs/
+migrations/
+chat_ui.py
+Dockerfile
+.dockerignore
+*.log
