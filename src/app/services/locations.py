@@ -120,30 +120,24 @@ def list_project_nodes(project_id: str, level: str | None, limit: int) -> list[d
 
 
 @observe_operation("db.projects.by-province", as_type="retriever")
-def project_ids_in_province(province: str) -> list[str]:
-    """Project ids sitting in a province — step one of a province-wide listing search.
+def project_ids_in_province(province: str, district: str | None = None) -> list[str]:
+    """Project ids sitting in a province/district — step one of a province-wide listing search.
 
     `listings` has no province column, so the only route from a province to its listings runs
     through here: resolve to project ids, then filter `listings.project_id`.
-
-    Matching is ILIKE-substring, same as search_projects, so case and partial names work but the
-    accented spelling is still required — `locations.province` is not accent-folded the way
-    `name_norm` is.
-
-    The 9 projects with no province recorded are unreachable this way, but all 9 have zero
-    listings, so a province search still covers all 2355 rows.
     """
-    rows = (
+    q = (
         get_client()
         .table("locations")
         .select("id")
         .eq("level", "project")
-        .ilike("province", f"%{_sanitize(province)}%")
-        .limit(1000)
-        .execute()
-        .data
-        or []
     )
+    if province:
+        q = q.ilike("province", f"%{_sanitize(province)}%")
+    if district:
+        q = q.ilike("district", f"%{_sanitize(district)}%")
+
+    rows = q.limit(1000).execute().data or []
     return [r["id"] for r in rows]
 
 

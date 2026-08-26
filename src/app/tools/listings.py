@@ -126,6 +126,7 @@ def register(mcp: FastMCP) -> None:
     @observe_tool
     def search_listings_by_province(
         province: str,
+        district: str | None = None,
         property_type: str | None = None,
         min_price_vnd: int | None = None,
         max_price_vnd: int | None = None,
@@ -136,29 +137,18 @@ def register(mcp: FastMCP) -> None:
         max_area_m2: float | None = None,
         limit: int = 10,
     ) -> list[dict]:
-        """Search LISTINGS across a whole province instead of one project.
+        """Search LISTINGS across a whole province (or specific district) instead of one project.
 
         Use when the user names a place rather than a project — "chung cư ở Hà Nội dưới 3 tỷ",
-        "căn hộ TP.HCM 2 phòng ngủ". If they have already settled on a project, use
+        "căn hộ Hoàng Mai, Hà Nội 2 phòng ngủ". If they have already settled on a project, use
         search_listings, which is one query instead of two.
 
-        Returns the same listing cards as search_listings, cheapest first across every project
-        in that province, so read `price_type` before quoting any price and apply the same
-        1-3-cards rule when presenting them. Cards carry `project_id`; group by it when the
-        results span several projects, because "rẻ nhất trong tỉnh" spread over five projects
-        is rarely what the user wants to see as a flat list.
-
-        Listings hold no province of their own, so this resolves the province to its projects
-        first and then filters on those. Raises if no project sits in that province — use
-        list_provinces to see which ones do, and pass the name back accented and spelled as
-        that tool returned it.
-
         Args:
-            province: province name, accented, e.g. "Hà Nội", "Hồ Chí Minh". Case-insensitive
-                and partial names match, but unaccented text does not.
+            province: province name, accented, e.g. "Hà Nội", "Hồ Chí Minh".
+            district: optional district name, e.g. "Hoàng Mai", "Gia Lâm", "Nam Từ Liêm".
             property_type: one of can_ho, lien_ke, nha_pho, shophouse, thuong_mai_dich_vu,
                 biet_thu_don_lap, biet_thu_song_lap, biet_thu_tu_lap. Anything else raises.
-            min_price_vnd: lowest acceptable total price in VND (e.g. 3000000000 for 3 tỷ).
+            min_price_vnd: lowest acceptable total price in VND.
             max_price_vnd: highest acceptable total price in VND.
             bedrooms: exact bedroom count, 0-4 (0 = studio).
             min_bedrooms: lowest acceptable bedroom count.
@@ -173,14 +163,16 @@ def register(mcp: FastMCP) -> None:
             ("bedrooms", min_bedrooms, max_bedrooms),
             ("area_m2", min_area_m2, max_area_m2),
         ))
-        project_ids = loc_svc.project_ids_in_province(province)
+        project_ids = loc_svc.project_ids_in_province(province, district=district)
         if not project_ids:
-            # Distinguish "we have nothing in that province" from "no unit matched your
-            # filters" — the agent should offer a different province, not a looser price.
-            raise ToolError(
-                f"No project found in province '{province}'. "
-                f"Known provinces: {', '.join(loc_svc.list_provinces())}."
-            )
+            if district:
+                # Nếu quận chưa có dự án, fallback sang toàn tỉnh
+                project_ids = loc_svc.project_ids_in_province(province)
+            if not project_ids:
+                raise ToolError(
+                    f"No project found in province '{province}'. "
+                    f"Known provinces: {', '.join(loc_svc.list_provinces())}."
+                )
         return svc.search_listings(
             project_id=None,
             project_ids=project_ids,

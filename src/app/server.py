@@ -54,8 +54,8 @@ register_all(mcp)
 def main() -> None:
     """Console-script / `python -m` entrypoint. Transport is chosen via env (.env)."""
     transport = config.transport()
-    if transport == "http":
-        mcp.run(transport="http", host=config.host(), port=config.port())
+    if transport in ("http", "sse"):
+        mcp.run(transport="sse", host=config.host(), port=config.port())
     else:
         mcp.run()  # stdio
 
