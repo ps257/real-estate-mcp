@@ -1,0 +1,6 @@
+﻿fastmcp>=3.4,<4
+langfuse>=4.14.4,<5
+supabase>=2.31
+python-dotenv>=1.0
+pydantic>=2.7
+truststore>=0.9
